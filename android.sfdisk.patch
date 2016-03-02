@@ -1,0 +1,261 @@
+diff --git a/Android.mk b/Android.mk
+new file mode 100644
+index 0000000..8e90e94
+--- /dev/null
++++ b/Android.mk
+@@ -0,0 +1,116 @@
++# Copyright 2014 The SUNNIWELL Android Open Source Project
++# Author:  Wictor  <linweigjj@gmail.com>
++LOCAL_PATH:= $(call my-dir)
++
++BUILD_STATIC_TOOLS := true
++WFLAGS := -fsigned-char -fno-common -Wall
++#################################################################
++# libcommon shared library
++#
++include $(CLEAR_VARS)
++ifeq ($(BUILD_STATIC_TOOLS),true)
++LOCAL_FORCE_STATIC_EXECUTABLE := true
++endif
++LOCAL_SRC_FILES := \
++	lib/at.c \
++	lib/blkdev.c \
++	lib/canonicalize.c \
++	lib/crc32.c \
++	lib/crc64.c \
++	lib/env.c \
++	lib/ismounted.c \
++	lib/mangle.c \
++	lib/match.c \
++	lib/md5.c \
++	lib/pager.c \
++	lib/path.c \
++	lib/procutils.c \
++	lib/randutils.c \
++	lib/setproctitle.c \
++	lib/strutils.c \
++	lib/sysfs.c \
++	lib/wholedisk.c \
++	lib/timeutils.c \
++	lib/linux_version.c \
++	lib/exec_shell.c
++	
++LOCAL_C_INCLUDES += \
++	$(LOCAL_PATH)/include
++	
++LOCAL_MODULE := libcommon
++LOCAL_MODULE_TAGS := optional
++CFLAGS := -g -O2 
++CFLAGS += $(WFLAGS)
++#include $(BUILD_SHARED_LIBRARY)
++#################################################################
++# libcommon static library
++#
++include $(CLEAR_VARS)
++ifeq ($(BUILD_STATIC_TOOLS),true)
++LOCAL_FORCE_STATIC_EXECUTABLE := true
++endif
++LOCAL_SRC_FILES := \
++	lib/at.c \
++	lib/blkdev.c \
++	lib/canonicalize.c \
++	lib/crc32.c \
++	lib/crc64.c \
++	lib/env.c \
++	lib/ismounted.c \
++	lib/mangle.c \
++	lib/match.c \
++	lib/md5.c \
++	lib/pager.c \
++	lib/path.c \
++	lib/procutils.c \
++	lib/randutils.c \
++	lib/setproctitle.c \
++	lib/strutils.c \
++	lib/sysfs.c \
++	lib/wholedisk.c \
++	lib/timeutils.c \
++	lib/linux_version.c \
++	lib/exec_shell.c
++	
++LOCAL_C_INCLUDES += \
++	$(LOCAL_PATH)/include
++	
++LOCAL_MODULE := libcommon
++LOCAL_MODULE_TAGS := optional
++CFLAGS := -g -O2
++CFLAGS += $(WFLAGS)
++#include $(BUILD_STATIC_LIBRARY)
++
++#################################################################
++# sfdisk
++#
++include $(CLEAR_VARS)
++
++ifeq ($(BUILD_STATIC_TOOLS),true)
++LOCAL_FORCE_STATIC_EXECUTABLE := true
++endif
++
++LOCAL_SRC_FILES := \
++	fdisks/partname.c \
++	fdisks/sfdisk.c \
++	lib/strutils.c \
++	lib/linux_version.c \
++	lib/wholedisk.c \
++	lib/blkdev.c \
++	lib/canonicalize.c
++	
++
++LOCAL_C_INCLUDES += \
++	$(LOCAL_PATH)/include 
++
++ifeq ($(BUILD_STATIC_TOOLS),true)
++LOCAL_STATIC_LIBRARIES := libc 
++else
++LOCAL_SHARED_LIBRARIES := libc 
++endif
++
++LOCAL_MODULE := sfdisk
++LOCAL_MODULE_TAGS := eng 
++CFLAGS := -g -O2
++CFLAGS += $(WFLAGS)
++include $(BUILD_EXECUTABLE)
+diff --git a/include/c.h b/include/c.h
+index 4a9bf3d..bf8d297 100644
+--- a/include/c.h
++++ b/include/c.h
+@@ -14,7 +14,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <errno.h>
+-
++#define PACKAGE_STRING "util-linux 2.24.1"
+ #ifdef HAVE_ERR_H
+ # include <err.h>
+ #endif
+@@ -240,11 +240,12 @@ static inline int dirfd(DIR *d)
+  */
+ static inline size_t get_hostname_max(void)
+ {
++#if 0
+ 	long len = sysconf(_SC_HOST_NAME_MAX);
+ 
+ 	if (0 < len)
+ 		return len;
+-
++#endif
+ #ifdef MAXHOSTNAMELEN
+ 	return MAXHOSTNAMELEN;
+ #elif HOST_NAME_MAX
+@@ -252,7 +253,7 @@ static inline size_t get_hostname_max(void)
+ #endif
+ 	return 64;
+ }
+-
++#define HAVE_USLEEP
+ #ifndef HAVE_USLEEP
+ /*
+  * This function is marked obsolete in POSIX.1-2001 and removed in
+diff --git a/include/closestream.h b/include/closestream.h
+index 2535c8b..abba78e 100644
+--- a/include/closestream.h
++++ b/include/closestream.h
+@@ -47,7 +47,7 @@ close_stdout(void)
+ 	if (close_stream(stderr) != 0)
+ 		_exit(EXIT_FAILURE);
+ }
+-
++#define HAVE_FSYNC
+ #ifndef HAVE_FSYNC
+ static inline int
+ fsync(int fd __attribute__((__unused__)))
+diff --git a/include/strutils.h b/include/strutils.h
+index c7fe42a..8fac4a4 100644
+--- a/include/strutils.h
++++ b/include/strutils.h
+@@ -34,16 +34,19 @@ extern void strtotimeval_or_err(const char *str, struct timeval *tv,
+ 		const char *errmesg);
+ 
+ extern int isdigit_string(const char *str);
+-
++#define HAVE_MEMPCPY
+ #ifndef HAVE_MEMPCPY
+ extern void *mempcpy(void *restrict dest, const void *restrict src, size_t n);
+ #endif
++#define HAVE_STRNLEN
+ #ifndef HAVE_STRNLEN
+ extern size_t strnlen(const char *s, size_t maxlen);
+ #endif
++#define HAVE_STRNDUP
+ #ifndef HAVE_STRNDUP
+ extern char *strndup(const char *s, size_t n);
+ #endif
++#define HAVE_STRNCHR
+ #ifndef HAVE_STRNCHR
+ extern char *strnchr(const char *s, size_t maxlen, int c);
+ #endif
+diff --git a/lib/fileutils.c b/lib/fileutils.c
+index 92b474c..eb5ee9f 100644
+--- a/lib/fileutils.c
++++ b/lib/fileutils.c
+@@ -13,7 +13,7 @@
+ #include "fileutils.h"
+ #include "pathnames.h"
+ #include "xalloc.h"
+-
++#define _PATH_TMP   "/tmp/"
+ /* Create open temporary file in safe way.  Please notice that the
+  * file permissions are -rw------- by default. */
+ int xmkstemp(char **tmpname, char *dir)
+diff --git a/lib/strutils.c b/lib/strutils.c
+index 69b7ba2..7057d56 100644
+--- a/lib/strutils.c
++++ b/lib/strutils.c
+@@ -235,6 +235,7 @@ err:
+ 		err(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
+ 
+ 	errx(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
++    return 0;
+ }
+ 
+ uint64_t strtou64_or_err(const char *str, const char *errmesg)
+@@ -256,6 +257,7 @@ err:
+ 		err(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
+ 
+ 	errx(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
++    return 0;
+ }
+ 
+ 
+@@ -278,6 +280,7 @@ err:
+ 		err(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
+ 
+ 	errx(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
++    return 0;
+ }
+ 
+ long strtol_or_err(const char *str, const char *errmesg)
+@@ -298,6 +301,7 @@ err:
+ 	if (errno)
+ 		err(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
+ 	errx(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
++    return 0;
+ }
+ 
+ unsigned long strtoul_or_err(const char *str, const char *errmesg)
+@@ -319,6 +323,7 @@ err:
+ 		err(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
+ 
+ 	errx(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
++    return 0;
+ }
+ 
+ uintmax_t strtosize_or_err(const char *str, const char *errmesg)
+@@ -332,6 +337,7 @@ uintmax_t strtosize_or_err(const char *str, const char *errmesg)
+ 		err(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
+ 
+ 	errx(STRTOXX_EXIT_CODE, "%s: '%s'", errmesg, str);
++    return 0;
+ }
+ 
+ 
